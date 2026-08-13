@@ -1,0 +1,337 @@
+-- Databricks notebook source
+---Part1
+--Question1.1
+select ProductID, ProductName, UnitPrice
+from Products
+where category = 'Electronics'
+order by UnitPrice DESC;
+
+--Question1.2
+select Region,
+count(CustomerID) as Customer_Count
+from Customers
+group by Region;
+
+--Question1.3
+select OrderID, OrderDate, TotalSales
+from Sales
+order by OrderDate DESC
+limit 10;
+
+--Question1.4
+select ProductName, Category, UnitPrice
+from Products
+where UnitPrice < 1000;
+
+--Question1.5
+select Satisfaction, count(*) as Customer_Feedback_Count
+from Customer_Feedback
+group by Satisfaction
+order by Customer_Feedback_Count DESC;
+
+----PART2
+--Question2.1
+select Channel,
+Round(sum(TotalSales),2) as Revenue,
+Round(sum(Profit),2) as TotalProfit
+from Sales
+group by Channel
+order by Revenue DESC;
+
+--Question2.2
+select c.CustomerID,
+concat(c.FirstName,'',c.LastName) as Customer_Name,
+round(sum(s.TotalSales),2) as TotalSpent
+from Customers c
+inner join Sales s
+on c.CustomerID=s.CustomerID
+group by c.CustomerID,c.FirstName,c.LastName
+order by TotalSpent DESC
+ Limit 5;
+
+--Question2.3
+ select Year(OrderDate) as Year,
+ month(OrderDate) as Month,
+ round(sum(TotalSales),2) as TotalSales
+ from Sales
+ where year(OrderDate) = 2024
+ group by year(OrderDate), Month(OrderDate)
+ order by Year ASC, month ASC;
+
+--Question2.4
+ select Channel,
+ count(Quantity)as Number_Of_Orders, 
+ round(AVG(TotalSales),2) as OrderValue,
+ round(sum(TotalSales),2) as TotalRevenue
+ from Sales
+ group by Channel
+ order by TotalRevenue DESC;
+
+--Question2.5
+ select ProductCategory,
+ round(AVG(Rating),2) as Average_Rating,
+ count(*) as Number_of_Reviews
+ from Customer_Feedback
+ group by ProductCategory
+ having count(*) >= 50
+order by Average_Rating DESC;
+
+---PART3
+--Question3.1
+with Product_Sales as(select p.Category,
+p.ProductName,
+sum(s.TotalSales)as TotalRevenue
+from Products p
+join Sales s
+on p.ProductID= s.ProductID
+group by p.Category,p.ProductName
+),
+RankedProducts as (
+    select Category, 
+    ProductName,
+    TotalRevenue,
+Row_Number() over(
+    partition by Category
+order by TotalRevenue DESC) as Rank
+from Product_Sales
+)
+select Category,ProductName,
+round(TotalRevenue,2) as TotalRevenue
+from RankedProducts
+where Rank=1 
+Order by Category;
+
+--Question3.2
+select c.CustomerID,
+c.Region,
+c.Channel,
+Round(sum(s.TotalSales),2)as TotalPurchases,
+count(s.OrderID)as Number_of_Orders,
+round(avg(s.TotalSales),2)as Average_Order_Value
+from Customers c
+inner join Sales s
+on c.CustomerID=s.CustomerID
+group by c.CustomerID, c.Region,c.Channel
+having count(s.OrderID)>3
+order by TotalPurchases DESC;
+
+--Question3.3
+select p.ProductName,
+p.Category,
+round(sum(s.TotalSales),2) as Total_Sales,
+round(sum(s.Profit),2) as Total_Profit,
+round((sum(Profit)/sum(s.TotalSales))*100,2) as Profit_Margin
+from Products p
+inner join Sales s
+on p.ProductID=s.ProductID
+group by ProductName, Category
+order by Profit_Margin DESC;
+
+--Question3.4
+with AnnualSales as(
+select Year(OrderDate) as Year,
+sum(TotalSales)as Total_Sales
+from Sales
+where Year(OrderDate) in (2023,2024)
+group by Year(OrderDate)
+)
+select Year,
+round(Total_Sales,2) as Total_Sales,
+round(
+    ((Total_Sales-LAG(Total_Sales)over(Order by Year))/LAG(Total_Sales)Over(Order by Year))*100,2
+)as Growth_Percentage
+from AnnualSales
+Order by Year;
+
+--Question3.5
+with RegionSales as (
+    select c.Region,
+round(sum(s.TotalSales),2)as Total_Sales,
+count(s.OrderID)as Total_Orders
+from Customers c
+Inner join Sales s
+on c.CustomerID=s.CustomerID
+group by c.Region)
+select Region,
+round(Total_Sales,2) as Total_Sales,
+Total_Orders,
+Rank() over(order by Total_Sales DESC) as Rank
+from RegionSales
+Order by Rank;
+
+-----PART4
+--Question4.1
+with CustomerOrders as (
+    select CustomerID,
+    Count(distinct OrderID) as Number_of_Orders
+    from Sales 
+    group by CustomerID 
+),
+CustomerGroups as (
+    select CustomerID,
+    case
+    when Rating in(4,5) then 'Highly Satisfied'
+    when Rating in (1,2,3) then 'Less Satisfied'
+    end as SatisfactionGroup
+    from Customer_Feedback
+)
+select cg.SatisfactionGroup,
+round(avg(co.Number_of_Orders),2) as Average_Number_of_Orders,
+count(distinct cg.CustomerID) AS TotalCustomers
+from CustomerGroups cg
+inner join CustomerOrders co
+on cg.CustomerID=co.CustomerID
+group by cg.SatisfactionGroup
+order by Average_Number_of_Orders DESC;
+
+--Question4.2
+select 
+case
+when DiscountPercent =0 then '0%'
+when DiscountPercent >0 and DiscountPercent <=10 then '1-10%'
+when DiscountPercent >10 and DiscountPercent <=20 then '11-20%'
+when DiscountPercent >20 and DiscountPercent<=30 then '21-30%'
+end Discount_Band,
+Round(sum(TotalSales),2)as TotalSales,
+Round(sum(Profit),2)as TotalProfit,
+Round ((sum(Profit)/sum(TotalSales))*100,2) as ProfitMargin
+from Sales
+Where DiscountPercent <=30
+group by 
+case 
+when DiscountPercent = 0 then '0%'
+when DiscountPercent >0 and DiscountPercent <=10 then '1-10%'
+when DiscountPercent>10 and DiscountPercent <=20 then '11-20%'
+when DiscountPercent>20 and DiscountPercent <=30 then '21-30%'
+end
+order by Discount_Band;
+
+--Question4.3
+With ProductPerformance as(
+    select
+    p.ProductName,
+    p.Category,
+    Sum(s.TotalSales) as Total_Revenue,
+    Sum(s.Quantity) as Sales_Volume,
+    Sum(s.Profit) as Total_Profit
+    From Sales s
+    join Products p on s.ProductID = p.ProductID
+    Group by p.ProductName, p.Category
+),
+RankedProducts as (
+    select ProductName,
+    Category,
+    Total_Revenue,
+    Sales_Volume,
+    Round((Total_Profit/Total_Revenue)*100,2) as ProfitMargin,
+    ROW_NUMBER() Over(
+        Order by Total_Revenue ASC) as RevenueBank
+        from ProductPerformance)
+Select ProductName,
+Category,
+Round(Total_Revenue,2) as Total_Revenue,
+Sales_Volume,
+ProfitMargin
+from RankedProducts
+where RevenueBank<=5 
+Order by Total_Revenue ASC;
+
+-----PART5
+--Section1
+select 
+Round(sum(TotalSales),2) as TotalRevenue,
+Round(sum(Profit),2)as TotalProfit,
+Round((sum(Profit)/sum(TotalSales))*100,2) as Profit_Margin,
+Count(Distinct OrderID) as TotalOrders,
+Count(Distinct CustomerID) as TotalCustomers,
+Round(avg(TotalSales),2) as Average_Order_Value
+from Sales
+Where Year(OrderDate) in (2023,2024);
+
+-----Section2
+--Insight#1
+with CustomerOrders as (
+    select CustomerID,
+    count(Distinct OrderID) as Number_Of_Orders
+    from Sales 
+    group by CustomerID
+),
+CustomerGroups as(
+    select CustomerID,
+    Case
+    When Rating in (4,5) then 'Highly Satisfied'
+    When Rating in (1,2,3) then 'Less Satisfied'
+    end as SatisfactionGroup
+    from Customer_Feedback)
+select cg.SatisfactionGroup,
+Round(AVG(co.Number_Of_Orders),2)as Average_Number_of_Orders,
+count(Distinct cg.CustomerID) as TotalCustomers
+from CustomerGroups cg
+inner join CustomerOrders co
+on cg.CustomerID=co.CustomerID
+group by cg.SatisfactionGroup
+order by Average_Number_of_Orders DESC;
+
+--Insight#2
+select 
+case 
+when DiscountPercent =0 then '0%'
+when DiscountPercent > 0 and DiscountPercent <=10 then '1-10%'
+when DiscountPercent> 10 and DiscountPercent <=20 then '11-20%'
+when DiscountPercent> 20 and DiscountPercent <=30 then '21-30%'
+end as DiscountBand,
+round(sum(TotalSales),2)as TotalSales,
+Round(sum(Profit),2)as TotalProfit,
+round((sum(Profit)/sum(TotalSales))*100,2)as ProfitMargin
+from Sales
+Where DiscountPercent<=30
+group by 
+case 
+when DiscountPercent =0 then '0%'
+when DiscountPercent >0 and DiscountPercent <=10 then '1-10%'
+when DiscountPercent>10 and DiscountPercent <=20 then '11-20%'
+when DiscountPercent>20 and DiscountPercent <=30 then '21-30%'
+end 
+order by 
+case
+when DiscountBand = '0%' then 1
+when DiscountBand = '1-10%' then 2
+when DiscountBand = '11-20%' then 3
+when DiscountBand = '21-30%' then 4
+end;
+
+--Insight#3
+with ProductPerformance as (
+    select p.ProductName,
+    p.Category,
+    Sum(s.TotalSales)as Total_Revenue,
+    Sum(s.Quantity) as Sales_Volume,
+    Sum(s.Profit) as TotalProfit,
+    AVG(cf.Rating) as Average_Rating
+from Sales s
+join Products p
+on p.ProductID=s.ProductID
+left join Customer_Feedback cf
+on s.OrderID=cf.OrderID
+group by p.ProductName,
+p.Category
+),
+RankedProducts as (
+    select ProductName,
+    Category,
+    Total_Revenue,
+    Sales_Volume,
+    round((TotalProfit/Total_Revenue)*100,2) as ProfitMargin,
+    Round(Average_Rating,2) as AverageRating,
+    ROW_NUMBER()Over(Order by Total_Revenue ASC) As RevenueBank
+    From ProductPerformance
+)
+select ProductName,
+Category,
+round(Total_Revenue,2) as TotalRevenue,
+Sales_Volume,
+ProfitMargin,
+AverageRating
+from RankedProducts
+where RevenueBank <=5
+order by TotalRevenue ASC;
