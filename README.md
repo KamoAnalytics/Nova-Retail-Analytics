@@ -15,3 +15,10 @@ an online platform. The overview is to use SQL-driven analysis to identify the k
 • Window functions (RANK, ROW_NUMBER, PARTITION BY) 
 • Date functions and time-based analysis 
 • Business intelligence and data interpretation 
+
+# About Me
+I'm a Finance and Data Analytics enthusiast with a background in Financial Information Systems. I'm currently building my skills in SQL, Power BI, Excel, and database design, with a focus on using data to solve real business problems.
+
+My projects explore areas such as sales performance, profitability, customer behaviour, product analysis, and business reporting. I'm particularly interested in combining my finance background with technology to turn data into insights that help businesses make better decisions.
+
+email:evamofomo@gmail.com
